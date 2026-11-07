@@ -88,7 +88,7 @@ public class SamsungRemotePlugin extends Plugin {
         controlIp = ip;
         final CountDownLatch latch = new CountDownLatch(1);
         final boolean[] ok = {false};
-        String name = Base64.encodeToString("Zapette".getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+        String name = Base64.encodeToString("TV Chap Simple".getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
         String url = "wss://" + ip + ":8002/api/v2/channels/samsung.remote.control?name=" + name
                 + (token != null && !token.isEmpty() ? "&token=" + token : "");
         control = http().newWebSocket(new Request.Builder().url(url).build(), new WebSocketListener() {
@@ -247,7 +247,7 @@ public class SamsungRemotePlugin extends Plugin {
         final boolean on = call.getBoolean("on", Boolean.TRUE);
         if (ip.isEmpty()) { call.reject("ip manquante"); return; }
         new Thread(new Runnable() { public void run() {
-            String name = Base64.encodeToString("Zapette".getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+            String name = Base64.encodeToString("TV Chap Simple".getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
             String url = "wss://" + ip + ":8002/api/v2/channels/com.samsung.art-app?name=" + name
                     + (token != null && !token.isEmpty() ? "&token=" + token : "");
             final CountDownLatch latch = new CountDownLatch(1);

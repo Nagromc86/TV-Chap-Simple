@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Zapette</title>
+<title>TV Chap Simple</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -88,8 +88,8 @@
 
   // --- mises à jour (APK sur GitHub) ---
   var NATIVE_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
-  var APP_VERSION="@@BUILD@@", REPO="Nagromc86/Zapette";
-  var APK_URL="https://github.com/"+REPO+"/releases/download/latest/Zapette.apk";
+  var APP_VERSION="@@BUILD@@", REPO="Nagromc86/TV-Chap-Simple";
+  var APK_URL="https://github.com/"+REPO+"/releases/download/latest/TV-Chap-Simple.apk";
   var REL_API="https://api.github.com/repos/"+REPO+"/releases/tags/latest";
   var appUpd={checking:false,avail:false};
   function devBuild(){return APP_VERSION.indexOf("@@")>=0;}
@@ -114,7 +114,7 @@
       if(r&&r.name)state.tvName=r.name;
       save();render();toast("Connectée"+(state.tvName?" · "+state.tvName:""));
       if(cb)cb();
-    }).catch(function(e){toast("Échec : autorise la Zapette sur l'écran de la TV, puis réessaie.");});
+    }).catch(function(e){toast("Échec : autorise la TV Chap Simple sur l'écran de la TV, puis réessaie.");});
   }
   function key(k){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} rc().key({ip:state.ip,token:state.token||"",key:k}).catch(function(){toast("Non connectée — ouvre les réglages.");}); }
   function launch(appId){
@@ -140,7 +140,7 @@
     var h='';
     if(!state.ip){
       h+='<div class="card"><div class="lbl">Première utilisation</div>'+
-        '<div class="hint">Connecte la Zapette à ta TV Samsung (même Wi-Fi). Ouvre les réglages ⚙️ pour saisir son adresse IP, puis appaire — la TV affichera une demande d\'autorisation.</div>'+
+        '<div class="hint">Connecte la TV Chap Simple à ta TV Samsung (même Wi-Fi). Ouvre les réglages ⚙️ pour saisir son adresse IP, puis appaire — la TV affichera une demande d\'autorisation.</div>'+
         '<button class="wbtn" data-view="settings" style="margin-top:12px">Configurer ma TV</button></div>';
       return h;
     }
@@ -200,7 +200,7 @@
   function render(){
     var h='<header><div class="brand">'+
       '<svg class="mk" viewBox="0 0 32 32" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="14" height="26" rx="5"/><circle cx="16" cy="10" r="2.3" fill="var(--accent)" stroke="none"/><path d="M13 18h6M16 22v3"/></svg>'+
-      '<div style="min-width:0"><h1>Za<b>pette</b></h1><div class="status'+(state.token?" ok":"")+'">'+(state.ip?(state.token?("● "+esc(state.tvName||state.ip)):("○ "+esc(state.ip)+" · non appairée")):"Non configurée")+'</div></div></div>'+
+      '<div style="min-width:0"><h1>TV Chap <b>Simple</b></h1><div class="status'+(state.token?" ok":"")+'">'+(state.ip?(state.token?("● "+esc(state.tvName||state.ip)):("○ "+esc(state.ip)+" · non appairée")):"Non configurée")+'</div></div></div>'+
       '<button class="gear" data-view="'+(state.view==="settings"?"remote":"settings")+'" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.2A1.6 1.6 0 0 0 7 19.3a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.2A1.6 1.6 0 0 0 2.7 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.2A1.6 1.6 0 0 0 17 2.7a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1z"/></svg></button></header>';
     h+=(state.view==="settings"?settingsView():remoteView());
     document.getElementById("app").innerHTML=h;

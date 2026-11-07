@@ -1,4 +1,4 @@
-# Zapette
+# TV Chap Simple
 
 **Télécommande universelle pour TV Samsung — lance tes apps en un bouton.**
 

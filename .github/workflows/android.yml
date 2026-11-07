@@ -1,4 +1,4 @@
-name: Build Zapette APK
+name: Build TV Chap Simple APK
 
 on:
   push:
@@ -47,20 +47,20 @@ jobs:
             -PverName=$(git rev-parse --short HEAD)
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk Zapette.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk TV-Chap-Simple.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Zapette-APK
-          path: Zapette.apk
+          name: TV-Chap-Simple-APK
+          path: TV-Chap-Simple.apk
           if-no-files-found: error
 
       - name: Publish to "latest" release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Zapette — dernier build
+          name: TV Chap Simple — dernier build
           body: "Télécommande universelle Samsung (prototype). Installez en autorisant les sources inconnues. build:${{ env.BUILD_SHA }}"
           prerelease: true
-          files: Zapette.apk
+          files: TV-Chap-Simple.apk
