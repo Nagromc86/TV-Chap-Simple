@@ -75,6 +75,7 @@
   .rbtn svg{width:23px;height:23px}
   .rbtn span{opacity:.82;text-transform:uppercase}
   .rbtn:active{transform:scale(.94)}
+  .rbtn.on{background:var(--on);color:#06310f;border:0}
   .rbtn.pw{background:var(--off);color:#fff;border:0}
   .dpad{position:relative;width:232px;height:232px;margin:0 auto 6px;border-radius:50%;
     background:radial-gradient(circle at 50% 40%,#21364d 0,#182a3d 56%,#0f1c2a 100%);
@@ -200,9 +201,9 @@
     }
     h+='<div class="remote">'+
       '<div class="rtop">'+
-        '<button class="rbtn pw" data-key="KEY_POWER">'+ic("power")+'<span>Éteindre</span></button>'+
+        '<button class="rbtn on" data-wol>'+ic("power")+'<span>Allumer</span></button>'+
         '<button class="rbtn" data-key="KEY_SOURCE">'+ic("source")+'<span>Source</span></button>'+
-        '<button class="rbtn" data-art>'+ic("art")+'<span>Art</span></button>'+
+        '<button class="rbtn pw" data-art aria-label="Éteindre (bascule en Art Mode)">'+ic("power")+'<span>Éteindre</span></button>'+
       '</div>'+
       '<div class="dpad">'+
         '<button class="dir u" data-key="KEY_UP" aria-label="Haut">'+ic("up")+'</button>'+
@@ -224,7 +225,6 @@
     h+='<div class="apps">'+
       '<button class="appbtn free" data-launch="b2" aria-label="TV by Free"><img class="applogo" src="tvbyfree.png" alt="" onerror="this.parentNode.classList.add(\'nologo\');this.remove()">'+ic("play")+'<span class="aname">TV by Free</span></button>'+
     '</div>';
-    h+='<button class="pw-wol" data-wol>'+ic("power")+'Allumer la TV</button>';
     return h;
   }
 
