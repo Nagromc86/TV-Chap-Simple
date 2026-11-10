@@ -75,6 +75,7 @@
   .rbtn svg{width:23px;height:23px}
   .rbtn span{opacity:.82;text-transform:uppercase}
   .rbtn:active{transform:scale(.94)}
+  .recbar{background:#3a1620;border:1px solid #ff5a5f;border-radius:14px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;font-size:.9rem}.recbar b{color:#ff8a8f}.recbar div{display:flex;gap:8px}.recbar .wbtn{margin:0;padding:10px}
   .rbtn.on{background:var(--on);color:#06310f;border:0}
   .rbtn.pw{background:var(--off);color:#fff;border:0}
   .dpad{position:relative;width:232px;height:232px;margin:0 auto 6px;border-radius:50%;
@@ -124,10 +125,10 @@
   function unent(s){return String(s==null?"":s).replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,"&");}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   var state={ip:"",mac:"",token:"",tvName:"",view:"remote",
-    b2:{label:"TV by Free",appId:""},
+    b2:{label:"TV by Free",appId:""},macro:[],rec:null,
     apps:[],picking:null,art:false};
-  try{var s=JSON.parse(localStorage.getItem("zapette")||"{}");Object.assign(state,s);state.apps=[];state.picking=null;delete state.b1;state.b2=state.b2||{};state.b2.label="TV by Free";}catch(e){}
-  function save(){try{localStorage.setItem("zapette",JSON.stringify({ip:state.ip,mac:state.mac,token:state.token,tvName:state.tvName,b2:state.b2}));}catch(e){}}
+  try{var s=JSON.parse(localStorage.getItem("zapette")||"{}");Object.assign(state,s);state.apps=[];state.picking=null;state.rec=null;if(!Array.isArray(state.macro))state.macro=[];delete state.b1;state.b2=state.b2||{};state.b2.label="TV by Free";}catch(e){}
+  function save(){try{localStorage.setItem("zapette",JSON.stringify({ip:state.ip,mac:state.mac,token:state.token,tvName:state.tvName,b2:state.b2,macro:state.macro}));}catch(e){}}
 
   // --- pont natif ---
   function rc(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.SamsungRemote)||null;}
@@ -166,9 +167,34 @@
       if(cb)cb();
     }).catch(function(e){toast("Échec : autorise la TV Chap Simple sur l'écran de la TV, puis réessaie.");});
   }
-  function key(k){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} rc().key({ip:state.ip,token:state.token||"",key:k}).catch(function(){toast("Non connectée — ouvre les réglages.");}); }
+  var MK={KEY_UP:1,KEY_DOWN:1,KEY_LEFT:1,KEY_RIGHT:1,KEY_ENTER:1,KEY_RETURN:1,KEY_HOME:1};
+  function key(k){ if(state.rec&&MK[k]){var n=Date.now();state.rec.steps.push({k:k,d:Math.max(500,Math.min(2500,n-state.rec.t))});state.rec.t=n;var c=document.getElementById("rec-n");if(c)c.textContent=state.rec.steps.length;} if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} rc().key({ip:state.ip,token:state.token||"",key:k}).catch(function(){toast("Non connectée — ouvre les réglages.");}); }
+  var playing=false;
+  function playMacro(){
+    if(playing)return; if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;}
+    playing=true;toast("Lancement de TV by Free…");var i=0,L=state.macro;
+    (function next(){ if(i>=L.length){playing=false;return;} var st=L[i++]; setTimeout(function(){ rc().key({ip:state.ip,token:state.token||"",key:st.k}).catch(function(){}); next(); }, st.d); })();
+  }
+  function startRec(){
+    if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;}
+    state.rec={steps:[],t:Date.now()};state.view="remote";render();window.scrollTo(0,0);
+    toast("Enregistrement : retour à l'accueil de la TV…");
+    state.rec.steps.push({k:"KEY_HOME",d:600});state.rec.t=Date.now()+1500;
+    rc().key({ip:state.ip,token:state.token||"",key:"KEY_HOME"}).catch(function(){toast("Non connectée — ouvre les réglages.");});
+    var c=document.getElementById("rec-n");if(c)c.textContent=state.rec.steps.length;
+  }
+  function stopRec(save_){
+    if(!state.rec)return;
+    if(save_){var st=state.rec.steps.slice();
+      /* le dernier OK lance l'appli : on garde tout, sans doublon de départ */
+      if(st.length<2){toast("Parcours trop court : navigue jusqu'à TV by Free puis valide avec OK.");return;}
+      st[0].d=600;state.macro=st;save();toast("Parcours enregistré ("+st.length+" étapes).");}
+    else toast("Enregistrement annulé.");
+    state.rec=null;render();
+  }
   function launch(appId){
-    if(!appId){toast("Associe d'abord une application dans les réglages.");return;}
+    if(!appId&&state.macro.length){playMacro();return;}
+    if(!appId){toast("Associe d'abord une application (ou enregistre un parcours) dans les réglages.");return;}
     if(!native()){needApp();return;}
     if(!state.ip){toast("Configure la TV d'abord.");return;}
     rc().launch({ip:state.ip,token:state.token||"",appId:appId}).then(function(){toast("Lancement…");}).catch(function(){toast("Échec du lancement.");});
@@ -200,6 +226,7 @@
 
   function remoteView(){
     var h='';
+    if(state.rec)h+='<div class="recbar"><b>● Enregistrement</b><span><span id="rec-n">'+state.rec.steps.length+'</span> étape(s) — navigue sur ta TV jusqu\'à TV by Free, puis valide avec OK.</span><div><button class="wbtn" data-recok>Terminer</button><button class="wbtn sec" data-reccancel>Annuler</button></div></div>';
     if(!state.ip){
       h+='<div class="card"><div class="lbl">Première utilisation</div>'+
         '<div class="hint">Connecte la TV Chap Simple à ta TV Samsung (même Wi-Fi). Ouvre les réglages ⚙️ pour saisir son adresse IP, puis appaire — la TV affichera une demande d\'autorisation.</div>'+
@@ -246,7 +273,10 @@
     h+='<div class="card"><div class="lbl">Boutons d\'applications</div>';
     h+='<div class="field"><label>Bouton « TV by Free » · ID d\'application</label><input id="f-b2" type="text" placeholder="ex. 3201xxxxxxxxx" value="'+esc(state.b2.appId)+'"></div>';
     h+='<button class="wbtn sec" data-detect>Détecter les applis installées</button>';
-    if(state.detectStatus&&!state.apps.length)h+='<div class="hint">Ta TV ne répond pas à la demande de liste (« '+esc(state.detectStatus)+' »). Ça arrive sur certains modèles. Dans ce cas, colle l\'ID à la main (champ ci-dessus) ou utilise le code d\'un autre appareil qui l\'a déjà.</div>';
+    h+='<div class="field-note hint" style="margin:10px 0 6px"><b>Sans ID ?</b> Enregistre le parcours dans le menu de la TV : l\'appli le rejouera quand tu toucheras le bouton'+(state.macro.length?' (<b>'+state.macro.length+' étapes</b> enregistrées).':'.')+'</div>'+
+      '<button class="wbtn sec" data-recstart>'+(state.macro.length?'Réenregistrer le parcours':'Enregistrer le parcours')+'</button>'+
+      (state.macro.length?'<button class="wbtn sec" data-macroplay>Tester le parcours</button><button class="wbtn sec" data-macroclear>Effacer le parcours</button>':'');
+    if(state.detectStatus&&!state.apps.length)h+='<div class="hint">Ta TV ne répond pas à la demande de liste (« '+esc(state.detectStatus)+' »). Ça arrive sur certains modèles. Dans ce cas, colle l\'ID à la main ou enregistre un parcours (ci-dessus).</div>';
     if(state.apps.length){
       h+='<div class="hint">Touche « Associer » en face de l\'appli TV by Free pour remplir l\'ID automatiquement.</div><div class="applist">';
       var q=norm(state.appq||""),FR=/free|oqee|qqee/i,L=state.apps.filter(function(a){return !q||norm((a.name||"")+" "+a.appId).indexOf(q)>=0}).sort(function(x,y){return (FR.test(y.name||"")-FR.test(x.name||""))||String(x.name||"").localeCompare(String(y.name||""))});
@@ -286,7 +316,7 @@
   }
 
   document.addEventListener("click",function(ev){
-    var t=ev.target.closest("[data-view],[data-key],[data-launch],[data-wol],[data-art],[data-connect],[data-detect],[data-assign],[data-checkupd],[data-getapk],[data-cfgshare],[data-cfgcopy],[data-cfgimport]");
+    var t=ev.target.closest("[data-view],[data-key],[data-launch],[data-wol],[data-art],[data-connect],[data-detect],[data-assign],[data-checkupd],[data-getapk],[data-cfgshare],[data-cfgcopy],[data-cfgimport],[data-recstart],[data-recok],[data-reccancel],[data-macroplay],[data-macroclear]");
     if(!t)return;var d=t.dataset;
     if(d.view){ if(state.view==="settings")syncFields(); state.view=d.view;render();window.scrollTo(0,0);return;}
     if(d.key){key(d.key);return;}
@@ -296,6 +326,11 @@
     if(t.hasAttribute("data-connect")){syncFields();connect();return;}
     if(t.hasAttribute("data-detect")){syncFields();detect();return;}
     if(d.assign){state.b2.appId=d.appid;save();toast("Associé au bouton TV by Free");render();return;}
+    if(t.hasAttribute("data-recstart")){syncFields();startRec();return;}
+    if(t.hasAttribute("data-recok")){stopRec(true);return;}
+    if(t.hasAttribute("data-reccancel")){stopRec(false);return;}
+    if(t.hasAttribute("data-macroplay")){playMacro();return;}
+    if(t.hasAttribute("data-macroclear")){state.macro=[];save();toast("Parcours effacé.");render();return;}
     if(t.hasAttribute("data-cfgshare")){syncFields();cfgShare();return;}
     if(t.hasAttribute("data-cfgcopy")){syncFields();cfgCopy();return;}
     if(t.hasAttribute("data-cfgimport")){cfgImport();return;}
@@ -305,15 +340,15 @@
   // --- partage de la configuration : un code texte « TCS1:… » (JSON en base64) ---
   function utf8b64(t){return btoa(unescape(encodeURIComponent(t)));}
   function b64utf8(b){return decodeURIComponent(escape(atob(b)));}
-  function cfgCode(){return "TCS1:"+utf8b64(JSON.stringify({ip:state.ip,mac:state.mac,token:state.token||"",tvName:state.tvName||"",app:state.b2.appId||""}));}
+  function cfgCode(){return "TCS1:"+utf8b64(JSON.stringify({ip:state.ip,mac:state.mac,token:state.token||"",tvName:state.tvName||"",app:state.b2.appId||"",macro:state.macro||[]}));}
   function cfgMessage(){return "Ma configuration TV Chap Simple (colle ce code dans Réglages › Partager la configuration › Importer) :\n"+cfgCode();}
   function copyText(t){
     function fallback(){var a=document.createElement("textarea");a.value=t;a.style.cssText="position:fixed;opacity:0";document.body.appendChild(a);a.select();var ok=false;try{ok=document.execCommand("copy");}catch(e){}a.remove();toast(ok?"Code copié.":"Copie impossible : sélectionne le code à la main.");}
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){toast("Code copié.");},fallback);else fallback();
   }
-  function cfgCopy(){if(!state.ip&&!state.mac&&!state.b2.appId){toast("Rien à partager pour l'instant.");return;}copyText(cfgCode());}
+  function cfgCopy(){if(!state.ip&&!state.mac&&!state.b2.appId&&!state.macro.length){toast("Rien à partager pour l'instant.");return;}copyText(cfgCode());}
   function cfgShare(){
-    if(!state.ip&&!state.mac&&!state.b2.appId){toast("Rien à partager pour l'instant.");return;}
+    if(!state.ip&&!state.mac&&!state.b2.appId&&!state.macro.length){toast("Rien à partager pour l'instant.");return;}
     if(navigator.share){navigator.share({title:"TV Chap Simple",text:cfgMessage()}).catch(function(e){if(e&&e.name!=="AbortError")copyText(cfgCode());});}
     else copyText(cfgCode());
   }
@@ -327,6 +362,7 @@
     if(typeof c.token==="string")state.token=c.token;
     if(typeof c.tvName==="string")state.tvName=c.tvName;
     if(typeof c.app==="string")state.b2.appId=c.app.trim();
+    if(Array.isArray(c.macro))state.macro=c.macro.filter(function(m){return m&&MK[m.k];}).map(function(m){return {k:m.k,d:Math.max(300,Math.min(3000,+m.d||800))};}).slice(0,60);
     save();toast("Configuration importée"+(state.token?".":" : il reste à appairer la TV."));render();
   }
   function syncFields(){
