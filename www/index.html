@@ -120,6 +120,7 @@
 <div id="app"></div>
 <script>
 (function(){
+  function norm(s){return String(s==null?"":s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
   function unent(s){return String(s==null?"":s).replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,"&");}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   var state={ip:"",mac:"",token:"",tvName:"",view:"remote",
@@ -174,12 +175,13 @@
   }
   function wol(){ if(!native()){needApp();return;} if(!state.mac){toast("Renseigne l'adresse MAC de la TV (réglages) pour l'allumage.");return;} rc().wol({mac:state.mac}).then(function(){toast("Allumage…");}).catch(function(){toast("Allumage impossible.");}); }
   function powerOff(){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} toast("Extinction de la TV…"); try{navigator.vibrate&&navigator.vibrate(40);}catch(e){} rc().keyHold({ip:state.ip,token:state.token||"",key:"KEY_POWER",ms:3000}).catch(function(){toast("Extinction impossible.");}); }
+  document.addEventListener("input",function(ev){var i=ev.target;if(!i||i.id!=="f-appq")return;state.appq=i.value;var q=norm(i.value);[].forEach.call(document.querySelectorAll(".approw"),function(r){r.style.display=!q||norm(r.textContent).indexOf(q)>=0?"":"none";});});
   var hold={t:null,done:false};
   document.addEventListener("pointerdown",function(ev){var b=ev.target.closest&&ev.target.closest("[data-art]");if(!b)return;hold.done=false;clearTimeout(hold.t);hold.t=setTimeout(function(){hold.done=true;powerOff();},700);});
   ["pointerup","pointercancel","pointerleave"].forEach(function(n){document.addEventListener(n,function(ev){if(hold.t&&ev.target.closest&&ev.target.closest("[data-art]")){clearTimeout(hold.t);hold.t=null;}},true);});
   document.addEventListener("contextmenu",function(ev){if(ev.target.closest&&ev.target.closest("[data-art]"))ev.preventDefault();});
   function artMode(){ if(!native()){needApp();return;} state.art=!state.art; rc().artMode({ip:state.ip,token:state.token||"",on:state.art}).then(function(){toast(state.art?"Art Mode activé":"Art Mode désactivé");}).catch(function(){toast("Art Mode indisponible sur ce modèle.");}); }
-  function detect(){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} toast("Recherche des applis…"); rc().listApps({ip:state.ip,token:state.token||""}).then(function(r){state.apps=(r&&r.apps)||[];render();if(!state.apps.length)toast("Aucune appli détectée (selon le modèle).");}).catch(function(){toast("Détection indisponible — tu peux saisir l'ID à la main.");}); }
+  function detect(){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} toast("Recherche des applis…"); rc().listApps({ip:state.ip,token:state.token||""}).then(function(r){state.apps=(r&&r.apps)||[];state.appq="";state.detectStatus=(r&&r.status)||"";render();if(!state.apps.length)toast("La TV ne donne pas sa liste d'applis ("+(state.detectStatus||"?")+"). Saisis l\x27ID à la main.");}).catch(function(){toast("Détection indisponible — tu peux saisir l'ID à la main.");}); }
 
   var ICON={
     power:'<path d="M12 3v9" /><path d="M6.5 7a8 8 0 1 0 11 0"/>',
@@ -244,12 +246,16 @@
     h+='<div class="card"><div class="lbl">Boutons d\'applications</div>';
     h+='<div class="field"><label>Bouton « TV by Free » · ID d\'application</label><input id="f-b2" type="text" placeholder="ex. 3201xxxxxxxxx" value="'+esc(state.b2.appId)+'"></div>';
     h+='<button class="wbtn sec" data-detect>Détecter les applis installées</button>';
+    if(state.detectStatus&&!state.apps.length)h+='<div class="hint">Ta TV ne répond pas à la demande de liste (« '+esc(state.detectStatus)+' »). Ça arrive sur certains modèles. Dans ce cas, colle l\'ID à la main (champ ci-dessus) ou utilise le code d\'un autre appareil qui l\'a déjà.</div>';
     if(state.apps.length){
       h+='<div class="hint">Touche « Associer » en face de l\'appli TV by Free pour remplir l\'ID automatiquement.</div><div class="applist">';
-      state.apps.forEach(function(a){
+      var q=norm(state.appq||""),FR=/free|oqee|qqee/i,L=state.apps.filter(function(a){return !q||norm((a.name||"")+" "+a.appId).indexOf(q)>=0}).sort(function(x,y){return (FR.test(y.name||"")-FR.test(x.name||""))||String(x.name||"").localeCompare(String(y.name||""))});
+      h+='<div class="field"><label>Filtrer les '+state.apps.length+' applis</label><input id="f-appq" type="text" placeholder="ex. free" value="'+esc(state.appq||"")+'"></div>';
+      L.forEach(function(a){
         h+='<div class="approw"><div style="min-width:0"><div class="nm">'+esc(a.name||a.appId)+'</div><div class="id">'+esc(a.appId)+'</div></div>'+
           '<div class="pick"><button data-assign="b2" data-appid="'+esc(a.appId)+'">Associer</button></div></div>';
       });
+      if(!L.length)h+='<div class="hint">Aucune appli ne correspond.</div>';
       h+='</div>';
     }
     h+='</div>';

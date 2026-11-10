@@ -211,8 +211,9 @@ public class SamsungRemotePlugin extends Plugin {
             if (!ensureControl(ip, token)) { call.reject("non connectée"); return; }
             appsResult = null; appsLatch = new CountDownLatch(1);
             try {
-                control.send("{\"method\":\"ms.channel.emit\",\"params\":{\"data\":\"\",\"event\":\"ed.installedApp.get\",\"to\":\"host\"}}");
-                appsLatch.await(6, TimeUnit.SECONDS);
+                String ask = "{\"method\":\"ms.channel.emit\",\"params\":{\"data\":\"\",\"event\":\"ed.installedApp.get\",\"to\":\"host\"}}";
+                control.send(ask);
+                if (!appsLatch.await(5, TimeUnit.SECONDS)) { control.send(ask); appsLatch.await(6, TimeUnit.SECONDS); }
             } catch (Exception e) {}
             JSObject res = new JSObject();
             JSONArray out = new JSONArray();
@@ -230,6 +231,29 @@ public class SamsungRemotePlugin extends Plugin {
                     }
                 }
             } catch (Exception e) {}
+            String status = appsResult == null ? "timeout" : (out.length() == 0 ? "empty" : "ok");
+            if (out.length() == 0) {
+                // repli : ancienne API REST (certains modèles la gardent)
+                try {
+                    Request rq = new Request.Builder().url("http://" + ip + ":8001/api/v2/applications").build();
+                    Response rs = http().newCall(rq).execute();
+                    String body = rs.body() != null ? rs.body().string() : ""; int code = rs.code(); rs.close();
+                    if (code >= 200 && code < 300 && body.startsWith("{")) {
+                        JSONObject j = new JSONObject(body);
+                        JSONObject d = j.optJSONObject("data");
+                        JSONArray arr = d != null ? d.optJSONArray("applications") : j.optJSONArray("applications");
+                        if (arr != null) for (int i = 0; i < arr.length(); i++) {
+                            JSONObject a = arr.optJSONObject(i); if (a == null) continue;
+                            JSObject row = new JSObject();
+                            row.put("appId", a.optString("appId", a.optString("id", "")));
+                            row.put("name", a.optString("name", ""));
+                            out.put(row);
+                        }
+                        if (out.length() > 0) status = "ok";
+                    } else { status += "+rest" + code; }
+                } catch (Exception e) { status += "+rest-err"; }
+            }
+            res.put("status", status);
             res.put("apps", out);
             call.resolve(res);
         }}).start();
