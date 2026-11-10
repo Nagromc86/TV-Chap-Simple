@@ -97,11 +97,16 @@
     display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
   .rrow .rk svg{width:20px;height:20px}
   .rrow .rk:active{background:var(--accent-soft)}
-  .apps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .apps{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
   .appbtn{border:0;border-radius:16px;padding:18px 12px;font-family:var(--disp);font-weight:700;font-size:1.1rem;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:#fff;
     min-height:84px;text-align:center;line-height:1.1;background:linear-gradient(140deg,#1f6feb,#36cfd0)}
   .appbtn svg{width:28px;height:28px}
+  .appbtn.free{background:#fff;color:#111;min-height:92px;flex-direction:row;gap:12px;border:1px solid var(--line)}
+  .appbtn.free .applogo{max-height:56px;max-width:70%;object-fit:contain}
+  .appbtn.free:not(.nologo) svg,.appbtn.free:not(.nologo) .aname{display:none}
+  .appbtn.free.nologo{background:linear-gradient(140deg,#7a3ff2,#b05cff);color:#fff;border:0}
+  .cfgta{width:100%;min-height:84px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);color:var(--fg);font-family:ui-monospace,monospace;font-size:.78rem;padding:10px;margin:8px 0;resize:vertical;box-sizing:border-box}
   .appbtn.alt{background:linear-gradient(140deg,#7a3ff2,#b05cff)}
   .appbtn:active{transform:scale(.97)}
   .pw-wol{width:100%;border:0;border-radius:14px;padding:14px;font-family:var(--disp);font-weight:700;font-size:1rem;
@@ -114,13 +119,13 @@
 <div id="app"></div>
 <script>
 (function(){
+  function unent(s){return String(s==null?"":s).replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,"&");}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   var state={ip:"",mac:"",token:"",tvName:"",view:"remote",
-    b1:{label:"TV Streamy",appId:"TvStrmy001.TVStreamy"},
     b2:{label:"TV by Free",appId:""},
     apps:[],picking:null,art:false};
-  try{var s=JSON.parse(localStorage.getItem("zapette")||"{}");Object.assign(state,s);state.apps=[];state.picking=null;}catch(e){}
-  function save(){try{localStorage.setItem("zapette",JSON.stringify({ip:state.ip,mac:state.mac,token:state.token,tvName:state.tvName,b1:state.b1,b2:state.b2}));}catch(e){}}
+  try{var s=JSON.parse(localStorage.getItem("zapette")||"{}");Object.assign(state,s);state.apps=[];state.picking=null;delete state.b1;state.b2=state.b2||{};state.b2.label="TV by Free";}catch(e){}
+  function save(){try{localStorage.setItem("zapette",JSON.stringify({ip:state.ip,mac:state.mac,token:state.token,tvName:state.tvName,b2:state.b2}));}catch(e){}}
 
   // --- pont natif ---
   function rc(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.SamsungRemote)||null;}
@@ -217,8 +222,7 @@
       '</div>'+
     '</div>';
     h+='<div class="apps">'+
-      '<button class="appbtn" data-launch="b1">'+ic("play")+esc(state.b1.label)+'</button>'+
-      '<button class="appbtn alt" data-launch="b2">'+ic("play")+esc(state.b2.label||"TV by Free")+'</button>'+
+      '<button class="appbtn free" data-launch="b2" aria-label="TV by Free"><img class="applogo" src="tvbyfree.png" alt="" onerror="this.parentNode.classList.add(\'nologo\');this.remove()">'+ic("play")+'<span class="aname">TV by Free</span></button>'+
     '</div>';
     h+='<button class="pw-wol" data-wol>'+ic("power")+'Allumer la TV</button>';
     return h;
@@ -229,23 +233,28 @@
       '<div class="field"><label>Adresse IP de la TV</label><input id="f-ip" type="text" inputmode="decimal" placeholder="ex. 192.168.1.30" value="'+esc(state.ip)+'"></div>'+
       '<div class="field"><label>Adresse MAC (pour l\'allumage)</label><input id="f-mac" type="text" placeholder="ex. A1:B2:C3:D4:E5:F6" value="'+esc(state.mac)+'"></div>'+
       '<button class="wbtn" data-connect>'+(state.token?"Reconnecter / ré-appairer":"Appairer la TV")+'</button>'+
-      '<div class="hint">'+(state.tvName?("Connectée à <b>"+esc(state.tvName)+"</b>. "):"")+'Active « Mise sous tension à distance » (ou Wake-on-LAN) dans les réglages réseau de la TV pour l\'allumage.</div></div>';
+      '<div class="hint">'+(state.tvName?("Connectée à <b>"+esc(unent(state.tvName))+"</b>. "):"")+'Active « Mise sous tension à distance » (ou Wake-on-LAN) dans les réglages réseau de la TV pour l\'allumage.</div></div>';
     // raccourcis d'apps
     h+='<div class="card"><div class="lbl">Boutons d\'applications</div>';
-    [["b1",state.b1],["b2",state.b2]].forEach(function(p){
-      var k=p[0],b=p[1];
-      h+='<div class="field"><label>Bouton « '+esc(b.label)+' » · ID d\'application</label><input id="f-'+k+'" type="text" placeholder="ex. '+(k==="b1"?"TvStrmy001.TVStreamy":"3201xxxxxxxxx")+'" value="'+esc(b.appId)+'"></div>';
-    });
+    h+='<div class="field"><label>Bouton « TV by Free » · ID d\'application</label><input id="f-b2" type="text" placeholder="ex. 3201xxxxxxxxx" value="'+esc(state.b2.appId)+'"></div>';
     h+='<button class="wbtn sec" data-detect>Détecter les applis installées</button>';
     if(state.apps.length){
-      h+='<div class="hint">Touche « → TV Streamy » ou « → TV by Free » pour associer une appli détectée au bouton.</div><div class="applist">';
+      h+='<div class="hint">Touche « Associer » en face de l\'appli TV by Free pour remplir l\'ID automatiquement.</div><div class="applist">';
       state.apps.forEach(function(a){
         h+='<div class="approw"><div style="min-width:0"><div class="nm">'+esc(a.name||a.appId)+'</div><div class="id">'+esc(a.appId)+'</div></div>'+
-          '<div class="pick"><button data-assign="b1" data-appid="'+esc(a.appId)+'" data-applabel="'+esc(a.name||"")+'">→ 1</button><button data-assign="b2" data-appid="'+esc(a.appId)+'" data-applabel="'+esc(a.name||"")+'">→ 2</button></div></div>';
+          '<div class="pick"><button data-assign="b2" data-appid="'+esc(a.appId)+'">Associer</button></div></div>';
       });
       h+='</div>';
     }
     h+='</div>';
+    h+='<div class="card"><div class="lbl">Partager la configuration</div>'+
+      '<div class="hint">Envoie tes réglages (IP, MAC, bouton TV by Free'+(state.token?', appairage':'')+') à un autre appareil qui vient d\'installer l\'appli : il n\'aura rien à retaper.</div>'+
+      '<button class="wbtn" data-cfgshare style="margin-top:10px">Envoyer ma configuration</button>'+
+      '<button class="wbtn sec" data-cfgcopy>Copier le code</button>'+
+      '<div class="hint" style="margin-top:6px">Sur l\'autre appareil, colle le code ici :</div>'+
+      '<textarea id="f-cfg" class="cfgta" placeholder="TCS1:…" spellcheck="false" autocapitalize="off"></textarea>'+
+      '<button class="wbtn sec" data-cfgimport>Importer la configuration</button>'+
+      (state.token?'<div class="hint">Le code contient l\'autorisation d\'appairage de ta TV : ne le partage qu\'avec tes propres appareils.</div>':'')+'</div>';
     // application / mise à jour
     h+='<div class="card"><div class="lbl">Application</div>'+
       '<div class="hint">Version : '+(devBuild()?"préversion (dev)":esc(APP_VERSION))+(appUpd.avail?" · <b>mise à jour disponible</b>":"")+'</div>'+
@@ -258,14 +267,14 @@
   function render(){
     var h='<header><div class="brand">'+
       '<svg class="mk" viewBox="0 0 32 32" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="14" height="26" rx="5"/><circle cx="16" cy="10" r="2.3" fill="var(--accent)" stroke="none"/><path d="M13 18h6M16 22v3"/></svg>'+
-      '<div style="min-width:0"><h1>TV Chap <b>Simple</b></h1><div class="status'+(state.token?" ok":"")+'">'+(state.ip?(state.token?("● "+esc(state.tvName||state.ip)):("○ "+esc(state.ip)+" · non appairée")):"Non configurée")+'</div></div></div>'+
+      '<div style="min-width:0"><h1>TV Chap <b>Simple</b></h1><div class="status'+(state.token?" ok":"")+'">'+(state.ip?(state.token?("● "+esc(unent(state.tvName)||state.ip)):("○ "+esc(state.ip)+" · non appairée")):"Non configurée")+'</div></div></div>'+
       '<button class="gear" data-view="'+(state.view==="settings"?"remote":"settings")+'" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.2A1.6 1.6 0 0 0 7 19.3a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.2A1.6 1.6 0 0 0 2.7 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.2A1.6 1.6 0 0 0 17 2.7a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1z"/></svg></button></header>';
     h+=(state.view==="settings"?settingsView():remoteView());
     document.getElementById("app").innerHTML=h;
   }
 
   document.addEventListener("click",function(ev){
-    var t=ev.target.closest("[data-view],[data-key],[data-launch],[data-wol],[data-art],[data-connect],[data-detect],[data-assign],[data-checkupd],[data-getapk]");
+    var t=ev.target.closest("[data-view],[data-key],[data-launch],[data-wol],[data-art],[data-connect],[data-detect],[data-assign],[data-checkupd],[data-getapk],[data-cfgshare],[data-cfgcopy],[data-cfgimport]");
     if(!t)return;var d=t.dataset;
     if(d.view){ if(state.view==="settings")syncFields(); state.view=d.view;render();window.scrollTo(0,0);return;}
     if(d.key){key(d.key);return;}
@@ -274,15 +283,44 @@
     if(t.hasAttribute("data-art")){artMode();return;}
     if(t.hasAttribute("data-connect")){syncFields();connect();return;}
     if(t.hasAttribute("data-detect")){syncFields();detect();return;}
-    if(d.assign){var b=state[d.assign];b.appId=d.appid;if(d.applabel)b.label=d.applabel;save();toast("Associé au bouton "+(d.assign==="b1"?"1":"2"));render();return;}
+    if(d.assign){state.b2.appId=d.appid;save();toast("Associé au bouton TV by Free");render();return;}
+    if(t.hasAttribute("data-cfgshare")){syncFields();cfgShare();return;}
+    if(t.hasAttribute("data-cfgcopy")){syncFields();cfgCopy();return;}
+    if(t.hasAttribute("data-cfgimport")){cfgImport();return;}
     if(t.hasAttribute("data-checkupd")){checkUpdate(true);return;}
     if(t.hasAttribute("data-getapk")){getApk();return;}
   });
+  // --- partage de la configuration : un code texte « TCS1:… » (JSON en base64) ---
+  function utf8b64(t){return btoa(unescape(encodeURIComponent(t)));}
+  function b64utf8(b){return decodeURIComponent(escape(atob(b)));}
+  function cfgCode(){return "TCS1:"+utf8b64(JSON.stringify({ip:state.ip,mac:state.mac,token:state.token||"",tvName:state.tvName||"",app:state.b2.appId||""}));}
+  function cfgMessage(){return "Ma configuration TV Chap Simple (colle ce code dans Réglages › Partager la configuration › Importer) :\n"+cfgCode();}
+  function copyText(t){
+    function fallback(){var a=document.createElement("textarea");a.value=t;a.style.cssText="position:fixed;opacity:0";document.body.appendChild(a);a.select();var ok=false;try{ok=document.execCommand("copy");}catch(e){}a.remove();toast(ok?"Code copié.":"Copie impossible : sélectionne le code à la main.");}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){toast("Code copié.");},fallback);else fallback();
+  }
+  function cfgCopy(){if(!state.ip&&!state.mac&&!state.b2.appId){toast("Rien à partager pour l'instant.");return;}copyText(cfgCode());}
+  function cfgShare(){
+    if(!state.ip&&!state.mac&&!state.b2.appId){toast("Rien à partager pour l'instant.");return;}
+    if(navigator.share){navigator.share({title:"TV Chap Simple",text:cfgMessage()}).catch(function(e){if(e&&e.name!=="AbortError")copyText(cfgCode());});}
+    else copyText(cfgCode());
+  }
+  function cfgImport(){
+    var el=document.getElementById("f-cfg"),v=el?el.value:"",m=/TCS1:([A-Za-z0-9+\/=]+)/.exec(v);
+    if(!m){toast("Code non reconnu : colle le code complet (il commence par TCS1:).");return;}
+    var c;try{c=JSON.parse(b64utf8(m[1]));}catch(e){toast("Code illisible ou incomplet.");return;}
+    if(!c||typeof c!=="object"){toast("Code illisible.");return;}
+    if(typeof c.ip==="string")state.ip=c.ip.trim();
+    if(typeof c.mac==="string")state.mac=c.mac.trim();
+    if(typeof c.token==="string")state.token=c.token;
+    if(typeof c.tvName==="string")state.tvName=c.tvName;
+    if(typeof c.app==="string")state.b2.appId=c.app.trim();
+    save();toast("Configuration importée"+(state.token?".":" : il reste à appairer la TV."));render();
+  }
   function syncFields(){
-    var ip=document.getElementById("f-ip"),mac=document.getElementById("f-mac"),b1=document.getElementById("f-b1"),b2=document.getElementById("f-b2");
+    var ip=document.getElementById("f-ip"),mac=document.getElementById("f-mac"),b2=document.getElementById("f-b2");
     if(ip)state.ip=ip.value.trim();
     if(mac)state.mac=mac.value.trim();
-    if(b1)state.b1.appId=b1.value.trim();
     if(b2)state.b2.appId=b2.value.trim();
     save();
   }
