@@ -164,6 +164,25 @@ public class SamsungRemotePlugin extends Plugin {
         }}).start();
     }
 
+    /** Appui long (Press, attente, Release) : sur une Frame, c'est ce qui éteint vraiment la TV. */
+    @PluginMethod
+    public void keyHold(final PluginCall call) {
+        final String ip = call.getString("ip", "");
+        final String token = call.getString("token", "");
+        final String k = call.getString("key", "");
+        final int ms = Math.max(300, Math.min(call.getInt("ms", 3000), 6000));
+        if (ip.isEmpty() || k.isEmpty()) { call.reject("paramètres manquants"); return; }
+        new Thread(new Runnable() { public void run() {
+            if (!ensureControl(ip, token)) { call.reject("non connectée"); return; }
+            try {
+                control.send("{\"method\":\"ms.remote.control\",\"params\":{\"Cmd\":\"Press\",\"DataOfCmd\":\"" + k + "\",\"Option\":\"false\",\"TypeOfRemote\":\"SendRemoteKey\"}}");
+                Thread.sleep(ms);
+                control.send("{\"method\":\"ms.remote.control\",\"params\":{\"Cmd\":\"Release\",\"DataOfCmd\":\"" + k + "\",\"Option\":\"false\",\"TypeOfRemote\":\"SendRemoteKey\"}}");
+                call.resolve();
+            } catch (Exception e) { call.reject("envoi échoué"); }
+        }}).start();
+    }
+
     @PluginMethod
     public void launch(final PluginCall call) {
         final String ip = call.getString("ip", "");

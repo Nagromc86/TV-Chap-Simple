@@ -173,6 +173,11 @@
     rc().launch({ip:state.ip,token:state.token||"",appId:appId}).then(function(){toast("Lancement…");}).catch(function(){toast("Échec du lancement.");});
   }
   function wol(){ if(!native()){needApp();return;} if(!state.mac){toast("Renseigne l'adresse MAC de la TV (réglages) pour l'allumage.");return;} rc().wol({mac:state.mac}).then(function(){toast("Allumage…");}).catch(function(){toast("Allumage impossible.");}); }
+  function powerOff(){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} toast("Extinction de la TV…"); try{navigator.vibrate&&navigator.vibrate(40);}catch(e){} rc().keyHold({ip:state.ip,token:state.token||"",key:"KEY_POWER",ms:3000}).catch(function(){toast("Extinction impossible.");}); }
+  var hold={t:null,done:false};
+  document.addEventListener("pointerdown",function(ev){var b=ev.target.closest&&ev.target.closest("[data-art]");if(!b)return;hold.done=false;clearTimeout(hold.t);hold.t=setTimeout(function(){hold.done=true;powerOff();},700);});
+  ["pointerup","pointercancel","pointerleave"].forEach(function(n){document.addEventListener(n,function(ev){if(hold.t&&ev.target.closest&&ev.target.closest("[data-art]")){clearTimeout(hold.t);hold.t=null;}},true);});
+  document.addEventListener("contextmenu",function(ev){if(ev.target.closest&&ev.target.closest("[data-art]"))ev.preventDefault();});
   function artMode(){ if(!native()){needApp();return;} state.art=!state.art; rc().artMode({ip:state.ip,token:state.token||"",on:state.art}).then(function(){toast(state.art?"Art Mode activé":"Art Mode désactivé");}).catch(function(){toast("Art Mode indisponible sur ce modèle.");}); }
   function detect(){ if(!native()){needApp();return;} if(!state.ip){toast("Configure la TV d'abord.");return;} toast("Recherche des applis…"); rc().listApps({ip:state.ip,token:state.token||""}).then(function(r){state.apps=(r&&r.apps)||[];render();if(!state.apps.length)toast("Aucune appli détectée (selon le modèle).");}).catch(function(){toast("Détection indisponible — tu peux saisir l'ID à la main.");}); }
 
@@ -203,7 +208,7 @@
       '<div class="rtop">'+
         '<button class="rbtn on" data-wol>'+ic("power")+'<span>Allumer</span></button>'+
         '<button class="rbtn" data-key="KEY_SOURCE">'+ic("source")+'<span>Source</span></button>'+
-        '<button class="rbtn pw" data-art aria-label="Éteindre (bascule en Art Mode)">'+ic("power")+'<span>Éteindre</span></button>'+
+        '<button class="rbtn pw" data-art aria-label="Éteindre : appui court = Art Mode, appui long = extinction">'+ic("power")+'<span>Éteindre</span></button>'+
       '</div>'+
       '<div class="dpad">'+
         '<button class="dir u" data-key="KEY_UP" aria-label="Haut">'+ic("up")+'</button>'+
@@ -222,6 +227,7 @@
         '<button class="rk" data-key="KEY_VOLUP">'+ic("volup")+'Vol +</button>'+
       '</div>'+
     '</div>';
+    h+='<div class="hint" style="text-align:center;margin:-2px 0 10px">Éteindre : appui court = Art Mode · appui long = extinction</div>';
     h+='<div class="apps">'+
       '<button class="appbtn free" data-launch="b2" aria-label="TV by Free"><img class="applogo" src="tvbyfree.png" alt="" onerror="this.parentNode.classList.add(\'nologo\');this.remove()">'+ic("play")+'<span class="aname">TV by Free</span></button>'+
     '</div>';
@@ -280,7 +286,7 @@
     if(d.key){key(d.key);return;}
     if(d.launch){launch(state[d.launch].appId);return;}
     if(t.hasAttribute("data-wol")){wol();return;}
-    if(t.hasAttribute("data-art")){artMode();return;}
+    if(t.hasAttribute("data-art")){if(hold.done){hold.done=false;return;}artMode();return;}
     if(t.hasAttribute("data-connect")){syncFields();connect();return;}
     if(t.hasAttribute("data-detect")){syncFields();detect();return;}
     if(d.assign){state.b2.appId=d.appid;save();toast("Associé au bouton TV by Free");render();return;}
