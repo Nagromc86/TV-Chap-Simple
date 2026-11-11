@@ -125,9 +125,9 @@
   function unent(s){return String(s==null?"":s).replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,"&");}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   var state={ip:"",mac:"",token:"",tvName:"",view:"remote",
-    b2:{label:"TV by Free",appId:""},macro:[],rec:null,
+    b2:{label:"TV by Free",appId:"znCs95n93Q.OqeeTV"},macro:[],rec:null,
     apps:[],picking:null,art:false};
-  try{var s=JSON.parse(localStorage.getItem("zapette")||"{}");Object.assign(state,s);state.apps=[];state.picking=null;state.rec=null;if(!Array.isArray(state.macro))state.macro=[];delete state.b1;state.b2=state.b2||{};state.b2.label="TV by Free";}catch(e){}
+  try{var s=JSON.parse(localStorage.getItem("zapette")||"{}");Object.assign(state,s);state.apps=[];state.picking=null;state.rec=null;if(!Array.isArray(state.macro))state.macro=[];delete state.b1;state.b2=state.b2||{};state.b2.label="TV by Free";if(!state.b2.appId)state.b2.appId="znCs95n93Q.OqeeTV";}catch(e){}
   function save(){try{localStorage.setItem("zapette",JSON.stringify({ip:state.ip,mac:state.mac,token:state.token,tvName:state.tvName,b2:state.b2,macro:state.macro}));}catch(e){}}
 
   // --- pont natif ---

@@ -194,10 +194,15 @@ public class SamsungRemotePlugin extends Plugin {
                         .url("http://" + ip + ":8001/api/v2/applications/" + appId)
                         .post(RequestBody.create(new byte[0], MediaType.parse("application/json")))
                         .build();
-                Response r = http().newCall(req).execute();
-                int code = r.code(); r.close();
-                if (code >= 200 && code < 300) call.resolve();
-                else call.reject("réponse TV " + code);
+                int code = -1;
+                try { Response r = http().newCall(req).execute(); code = r.code(); r.close(); } catch (Exception e) {}
+                if (code >= 200 && code < 300) { call.resolve(); return; }
+                // repli (TV récentes) : lancement par la connexion de télécommande
+                final String token = call.getString("token", "");
+                if (!ensureControl(ip, token)) { call.reject("réponse TV " + code + ", connexion impossible"); return; }
+                String type = appId.matches("\\d+") ? "NATIVE_LAUNCH" : "DEEP_LINK";
+                control.send("{\"method\":\"ms.channel.emit\",\"params\":{\"event\":\"ed.apps.launch\",\"to\":\"host\",\"data\":{\"appId\":\"" + appId.replace("\"", "") + "\",\"action_type\":\"" + type + "\"}}}");
+                call.resolve();
             } catch (Exception e) { call.reject("lancement impossible"); }
         }}).start();
     }
