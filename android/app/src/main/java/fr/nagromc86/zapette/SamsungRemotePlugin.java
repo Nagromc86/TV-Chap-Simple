@@ -49,6 +49,21 @@ public class SamsungRemotePlugin extends Plugin {
     private String controlIp;
     private volatile boolean controlReady;
     private volatile String newToken;
+
+    /* Le jeton Samsung est propre à CET appareil : on garde celui que la TV nous a donné (par IP de TV),
+       pour ne plus redemander l'autorisation à chaque connexion. */
+    private String storedToken(String ip) {
+        try { return getContext().getSharedPreferences("zapette", android.content.Context.MODE_PRIVATE).getString("token_" + ip, ""); }
+        catch (Exception e) { return ""; }
+    }
+    private void storeToken(String ip, String tk) {
+        try { getContext().getSharedPreferences("zapette", android.content.Context.MODE_PRIVATE).edit().putString("token_" + ip, tk).apply(); } catch (Exception e) {}
+        try { JSObject d = new JSObject(); d.put("ip", ip); d.put("token", tk); notifyListeners("token", d); } catch (Exception e) {}
+    }
+    private String bestToken(String ip, String passed) {
+        String s = storedToken(ip);
+        return !s.isEmpty() ? s : (passed == null ? "" : passed);
+    }
     private volatile JSONObject appsResult;
     private volatile CountDownLatch appsLatch;
 
@@ -86,6 +101,8 @@ public class SamsungRemotePlugin extends Plugin {
         if (control != null && controlReady && ip.equals(controlIp)) return true;
         closeControl();
         controlIp = ip;
+        token = bestToken(ip, token);
+        final String fip = ip;
         final CountDownLatch latch = new CountDownLatch(1);
         final boolean[] ok = {false};
         String name = Base64.encodeToString("TV Chap Simple".getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
@@ -100,7 +117,7 @@ public class SamsungRemotePlugin extends Plugin {
                         JSONObject data = o.optJSONObject("data");
                         if (data != null) {
                             String tk = data.optString("token", "");
-                            if (!tk.isEmpty()) newToken = tk;
+                            if (!tk.isEmpty()) { newToken = tk; if (!tk.equals(storedToken(fip))) storeToken(fip, tk); }
                         }
                         controlReady = true; ok[0] = true; latch.countDown();
                     } else if ("ms.channel.unauthorized".equals(ev) || "ms.channel.timeOut".equals(ev)) {
@@ -291,11 +308,11 @@ public class SamsungRemotePlugin extends Plugin {
     @PluginMethod
     public void artMode(final PluginCall call) {
         final String ip = call.getString("ip", "");
-        final String token = call.getString("token", "");
         final boolean on = call.getBoolean("on", Boolean.TRUE);
         if (ip.isEmpty()) { call.reject("ip manquante"); return; }
         new Thread(new Runnable() { public void run() {
             String name = Base64.encodeToString("TV Chap Simple".getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+            final String token = bestToken(ip, call.getString("token", ""));
             String url = "wss://" + ip + ":8002/api/v2/channels/com.samsung.art-app?name=" + name
                     + (token != null && !token.isEmpty() ? "&token=" + token : "");
             final CountDownLatch latch = new CountDownLatch(1);

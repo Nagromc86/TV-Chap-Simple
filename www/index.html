@@ -132,6 +132,8 @@
 
   // --- pont natif ---
   function rc(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.SamsungRemote)||null;}
+  /* la TV donne un jeton propre à cet appareil après « Autor. » : on le garde */
+  setTimeout(function(){try{var R=rc();if(R&&R.addListener)R.addListener("token",function(d){if(d&&d.token&&(!d.ip||d.ip===state.ip)&&d.token!==state.token){state.token=d.token;save();}});}catch(e){}},0);
   function native(){return !!rc();}
   var toastT;
   function toast(m){var e=document.getElementById("toast");if(!e){e=document.createElement("div");e.id="toast";e.className="toast";document.body.appendChild(e);}e.textContent=m;requestAnimationFrame(function(){e.classList.add("show");});clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove("show");},2600);}
@@ -290,13 +292,13 @@
     }
     h+='</div>';
     h+='<div class="card"><div class="lbl">Partager la configuration</div>'+
-      '<div class="hint">Envoie tes réglages (IP, MAC, bouton TV by Free'+(state.token?', appairage':'')+') à un autre appareil qui vient d\'installer l\'appli : il n\'aura rien à retaper.</div>'+
+      '<div class="hint">Envoie tes réglages (IP, MAC, bouton TV by Free, parcours) à un autre appareil qui vient d\'installer l\'appli. La TV lui demandera une seule autorisation (« Autor. ») à la première connexion.</div>'+
       '<button class="wbtn" data-cfgshare style="margin-top:10px">Envoyer ma configuration</button>'+
       '<button class="wbtn sec" data-cfgcopy>Copier le code</button>'+
       '<div class="hint" style="margin-top:6px">Sur l\'autre appareil, colle le code ici :</div>'+
       '<textarea id="f-cfg" class="cfgta" placeholder="TCS1:…" spellcheck="false" autocapitalize="off"></textarea>'+
       '<button class="wbtn sec" data-cfgimport>Importer la configuration</button>'+
-      (state.token?'<div class="hint">Le code contient l\'autorisation d\'appairage de ta TV : ne le partage qu\'avec tes propres appareils.</div>':'')+'</div>';
+      '</div>';
     // application / mise à jour
     h+='<div class="card"><div class="lbl">Application</div>'+
       '<div class="hint">Version : '+(devBuild()?"préversion (dev)":esc(APP_VERSION))+(appUpd.avail?" · <b>mise à jour disponible</b>":"")+'</div>'+
@@ -340,7 +342,7 @@
   // --- partage de la configuration : un code texte « TCS1:… » (JSON en base64) ---
   function utf8b64(t){return btoa(unescape(encodeURIComponent(t)));}
   function b64utf8(b){return decodeURIComponent(escape(atob(b)));}
-  function cfgCode(){return "TCS1:"+utf8b64(JSON.stringify({ip:state.ip,mac:state.mac,token:state.token||"",tvName:state.tvName||"",app:state.b2.appId||"",macro:state.macro||[]}));}
+  function cfgCode(){return "TCS1:"+utf8b64(JSON.stringify({ip:state.ip,mac:state.mac,tvName:state.tvName||"",app:state.b2.appId||"",macro:state.macro||[]}));}
   function cfgMessage(){return "Ma configuration TV Chap Simple (colle ce code dans Réglages › Partager la configuration › Importer) :\n"+cfgCode();}
   function copyText(t){
     function fallback(){var a=document.createElement("textarea");a.value=t;a.style.cssText="position:fixed;opacity:0";document.body.appendChild(a);a.select();var ok=false;try{ok=document.execCommand("copy");}catch(e){}a.remove();toast(ok?"Code copié.":"Copie impossible : sélectionne le code à la main.");}
@@ -359,11 +361,10 @@
     if(!c||typeof c!=="object"){toast("Code illisible.");return;}
     if(typeof c.ip==="string")state.ip=c.ip.trim();
     if(typeof c.mac==="string")state.mac=c.mac.trim();
-    if(typeof c.token==="string")state.token=c.token;
     if(typeof c.tvName==="string")state.tvName=c.tvName;
     if(typeof c.app==="string")state.b2.appId=c.app.trim();
     if(Array.isArray(c.macro))state.macro=c.macro.filter(function(m){return m&&MK[m.k];}).map(function(m){return {k:m.k,d:Math.max(300,Math.min(3000,+m.d||800))};}).slice(0,60);
-    save();toast("Configuration importée"+(state.token?".":" : il reste à appairer la TV."));render();
+    save();toast("Configuration importée. Touche « Appairer la TV » et accepte une fois sur la TV.");render();
   }
   function syncFields(){
     var ip=document.getElementById("f-ip"),mac=document.getElementById("f-mac"),b2=document.getElementById("f-b2");
